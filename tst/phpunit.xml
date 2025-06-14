@@ -15,7 +15,9 @@
   <testsuite name="PrivateBin Test Suite">
     <directory suffix=".php">./</directory>
   </testsuite>
+  <!--
   <logging>
     <testdoxHtml outputFile="log/testdox.html"/>
   </logging>
+  -->
 </phpunit>
