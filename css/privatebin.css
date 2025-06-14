@@ -18,20 +18,15 @@ html {
 	background-color: #455463;
 	color: #fff;
 	min-height: 100%;
-	background-image: linear-gradient(bottom, #0f1823 0, #455463 100%);
-	background-image: -o-linear-gradient(bottom, #0f1823 0, #455463 100%);
-	background-image: -moz-linear-gradient(bottom, #0f1823 0, #455463 100%);
-	background-image: -webkit-linear-gradient(bottom, #0f1823 0, #455463 100%);
-	background-image: -ms-linear-gradient(bottom, #0f1823 0, #455463 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #0f1823), color-stop(1, #455463));
+	background-image: linear-gradient(to top, #0f1823 0, #455463 100%); /* Standardized gradient direction */
 }
 
 body {
 	font-family: Helvetica, Arial, sans-serif;
 	font-size: 0.9em;
 	margin-bottom: 15px;
-	padding-left: 60px;
-	padding-right: 60px;
+	padding-left: max(15px, 5vw); /* Responsive padding */
+	padding-right: max(15px, 5vw); /* Responsive padding */
 }
 
 a { color: #0f388f; cursor:pointer; }
@@ -90,13 +85,9 @@ h3.title {
 	clear: both;
 	color: #000;
 	background-color: #fff;
-	font-size: 9pt;
+	font-size: 0.75rem; /* 9pt to rem */
 	border: 1px solid #28343F;
 	box-sizing: border-box;
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
-	-ms-box-sizing: border-box;
-	-o-box-sizing: border-box;
 	width: 100%;
 }
 
@@ -139,40 +130,19 @@ button, .button {
 	font-size: 1em;
 	margin-right: 5px;
 	display: inline-block;
-	background-image: linear-gradient(bottom, #323b47 0, #51606e 100%);
-	background-image: -o-linear-gradient(bottom, #323b47 0, #51606e 100%);
-	background-image: -moz-linear-gradient(bottom, #323b47 0, #51606e 100%);
-	background-image: -webkit-linear-gradient(bottom, #323b47 0, #51606e 100%);
-	background-image: -ms-linear-gradient(bottom, #323b47 0, #51606e 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #323b47), color-stop(1, #51606e));
+	background-image: linear-gradient(to top, #323b47 0, #51606e 100%); /* Standardized gradient direction */
 	border: 1px solid #28343F;
-	-moz-box-shadow: inset 0 1px 2px #647384;
-	-webkit-box-shadow: inset 0 1px 2px #647384;
 	box-shadow: inset 0 1px 2px #647384;
-	-webkit-border-radius: 3px;
-	-moz-border-radius: 3px;
 	border-radius: 3px;
-	-moz-background-clip: padding;
-	-webkit-background-clip: padding-box;
 	background-clip: padding-box;
 }
 
 button:hover  {
-	background-image: linear-gradient(bottom, #424b57 0%, #61707e 100%);
-	background-image: -o-linear-gradient(bottom, #424b57 0%, #61707e 100%);
-	background-image: -moz-linear-gradient(bottom, #424b57 0%, #61707e 100%);
-	background-image: -webkit-linear-gradient(bottom, #424b57 0%, #61707e 100%);
-	background-image: -ms-linear-gradient(bottom, #424b57 0%, #61707e 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #424b57), color-stop(1, #61707e));
+	background-image: linear-gradient(to top, #424b57 0%, #61707e 100%); /* Standardized gradient direction */
 }
 
 button:active {
-	background-image: linear-gradient(bottom, #51606e 0, #323b47 100%);
-	background-image: -o-linear-gradient(bottom, #51606e 0, #323b47 100%);
-	background-image: -moz-linear-gradient(bottom, #51606e 0, #323b47 100%);
-	background-image: -webkit-linear-gradient(bottom, #51606e 0, #323b47 100%);
-	background-image: -ms-linear-gradient(bottom, #51606e 0, #323b47 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #51606e), color-stop(1, #323b47));
+	background-image: linear-gradient(to top, #51606e 0, #323b47 100%); /* Standardized gradient direction */
 	position:relative;
 	top:1px;
 }
@@ -239,9 +209,10 @@ input {
 }
 
 .blink {
-	text-decoration: blink;
+	/* text-decoration: blink; */ /* Deprecated and bad for accessibility */
 	font-size: 0.8em;
 	color: #a4b3c4;
+	/* If emphasis is still needed, consider a subtle animation or just rely on the symbol itself */
 }
 
 .foryoureyesonly {
@@ -256,9 +227,7 @@ input {
 	width: 100%;
 	text-align: center;
 	font-weight: bold;
-	font-size: 10pt;
-	-webkit-border-radius: 4px;
-	-moz-border-radius: 4px;
+	font-size: 0.833rem; /* 10pt to rem */
 	border-radius: 4px;
 	padding: 5px 0;
 }
@@ -271,8 +240,6 @@ input {
 	font-size: 0.85em;
 	padding: 3px 5px;
 	text-align: center;
-	-webkit-border-radius: 4px;
-	-moz-border-radius: 4px;
 	border-radius: 4px;
 	display: none;
 }
@@ -343,40 +310,19 @@ h4.title {
 	font-size: 0.73em;
 	margin: 3px 5px 3px 0;
 	display: inline;
-	background-image: linear-gradient(bottom, #aab 0, #ccc 100%);
-	background-image: -o-linear-gradient(bottom, #aab 0, #ccc 100%);
-	background-image: -moz-linear-gradient(bottom, #aab 0, #ccc 100%);
-	background-image: -webkit-linear-gradient(bottom, #aab 0, #ccc 100%);
-	background-image: -ms-linear-gradient(bottom, #aab 0, #ccc 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #aab), color-stop(1, #ccc));
+	background-image: linear-gradient(to top, #aab 0, #ccc 100%); /* Standardized gradient direction */
 	border: 1px solid #ccd;
-	-moz-box-shadow: inset 0 1px 2px #ddd;
-	-webkit-box-shadow: inset 0 1px 2px #fff;
 	box-shadow: inset 0 1px 2px #eee;
-	-webkit-border-radius: 3px;
-	-moz-border-radius: 3px;
 	border-radius: 3px;
-	-moz-background-clip: padding;
-	-webkit-background-clip: padding-box;
 	background-clip: padding-box;
 }
 
 .comment button:hover  {
-	background-image: linear-gradient(bottom, #ccd 0, #fff 100%);
-	background-image: -o-linear-gradient(bottom, #ccd 0, #fff 100%);
-	background-image: -moz-linear-gradient(bottom, #ccd 0, #fff 100%);
-	background-image: -webkit-linear-gradient(bottom, #ccd 0, #fff 100%);
-	background-image: -ms-linear-gradient(bottom, #ccd 0, #fff 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #ccd), color-stop(1, #fff));
+	background-image: linear-gradient(to top, #ccd 0, #fff 100%); /* Standardized gradient direction */
 }
 
 .comment button:active {
-	background-image: linear-gradient(bottom, #fff 0, #889 100%);
-	background-image: -o-linear-gradient(bottom, #fff 0, #889 100%);
-	background-image: -moz-linear-gradient(bottom, #fff 0, #889 100%);
-	background-image: -webkit-linear-gradient(bottom, #fff 0, #889 100%);
-	background-image: -ms-linear-gradient(bottom, #fff 0, #889 100%);
-	background-image: -webkit-gradient(linear, left bottom, left top, color-stop(0, #fff), color-stop(1, #889));
+	background-image: linear-gradient(to top, #fff 0, #889 100%); /* Standardized gradient direction */
 	position:relative;
 	top:1px;
 }

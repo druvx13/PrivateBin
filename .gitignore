@@ -8,23 +8,13 @@ cfg/*
 # Ignore data/
 /data/
 
+# Ignore vendor dir of Composer
+/vendor/
+/third_party_libs/
+
 # Ignore PhpDoc
 doc/*
 !doc/*.md
-
-# Ignore vendor dir of Composer except PHP files
-vendor/*.*
-vendor/*/*.*
-vendor/*/*/*.*
-vendor/*/*/*/*.*
-vendor/*/*/*/*/*.*
-vendor/*/*/*/*/*/*.*
-vendor/**/LICENSE
-vendor/**/test
-vendor/**/tst
-vendor/**/tests
-vendor/**/build_phar.php
-!vendor/**/*.php
 
 # Ignore local node modules, unit testing logs, api docs and IDE project files
 js/node_modules/

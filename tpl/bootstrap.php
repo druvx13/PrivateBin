@@ -46,7 +46,7 @@ endif;
 <?php
 if ($QRCODE) :
 ?>
-		<?php $this->_scriptTag('js/kjua-0.9.0.js', 'async'); ?>
+		<?php $this->_scriptTag('js/kjua-0.10.0.js', 'async'); ?>
 <?php
 endif;
 if ($ZEROBINCOMPATIBILITY) :
@@ -71,7 +71,7 @@ if ($MARKDOWN) :
 <?php
 endif;
 ?>
-		<?php $this->_scriptTag('js/purify-3.2.5.js', 'async'); ?>
+		<?php $this->_scriptTag('js/purify-3.2.6.js', 'async'); ?>
 		<?php $this->_scriptTag('js/legacy.js', 'async'); ?>
 		<?php $this->_scriptTag('js/privatebin.js', 'defer'); ?>
 		<!-- icon -->
