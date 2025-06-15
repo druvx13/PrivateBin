@@ -356,14 +356,21 @@ class Database extends AbstractData
      */
     public function delete($pasteid)
     {
-        $this->_exec(
-            'DELETE FROM "' . $this->_sanitizeIdentifier('paste') .
-            '" WHERE "dataid" = ?', array($pasteid)
-        );
-        $this->_exec(
-            'DELETE FROM "' . $this->_sanitizeIdentifier('comment') .
-            '" WHERE "pasteid" = ?', array($pasteid)
-        );
+        try {
+            $this->_exec(
+                'DELETE FROM "' . $this->_sanitizeIdentifier('comment') .
+                '" WHERE "pasteid" = ?', array($pasteid)
+            );
+            $this->_exec(
+                'DELETE FROM "' . $this->_sanitizeIdentifier('paste') .
+                '" WHERE "dataid" = ?', array($pasteid)
+            );
+            return true;
+        } catch (PDOException $e) {
+            // Log error appropriately here if a logging mechanism was available
+            // error_log("Error deleting paste/comments: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -445,37 +452,54 @@ class Database extends AbstractData
      */
     public function readComments($pasteid)
     {
-        $rows = $this->_select(
-            'SELECT * FROM "' . $this->_sanitizeIdentifier('comment') .
-            '" WHERE "pasteid" = ?', array($pasteid)
-        );
+        try {
+            $rows = $this->_select(
+                'SELECT * FROM "' . $this->_sanitizeIdentifier('comment') .
+                '" WHERE "pasteid" = ?', array($pasteid)
+            );
 
-        // create comment list
-        $comments = array();
-        if (is_array($rows) && count($rows)) {
-            foreach ($rows as $row) {
-                $i    = $this->getOpenSlot($comments, (int) $row['postdate']);
-                $data = Json::decode($row['data']);
-                if (array_key_exists('v', $data) && $data['v'] >= 2) {
-                    $version      = 2;
-                    $comments[$i] = $data;
-                } else {
-                    $version      = 1;
-                    $comments[$i] = array('data' => $row['data']);
-                }
-                list($createdKey, $iconKey) = $this->_getVersionedKeys($version);
-                $comments[$i]['id']         = $row['dataid'];
-                $comments[$i]['parentid']   = $row['parentid'];
-                $comments[$i]['meta']       = array($createdKey => (int) $row['postdate']);
-                foreach (array('nickname' => 'nickname', 'vizhash' => $iconKey) as $rowKey => $commentKey) {
-                    if (array_key_exists($rowKey, $row) && !empty($row[$rowKey])) {
-                        $comments[$i]['meta'][$commentKey] = $row[$rowKey];
+            // create comment list
+            $comments = array();
+            if (is_array($rows) && count($rows)) {
+                foreach ($rows as $row) {
+                    $i    = $this->getOpenSlot($comments, (int) $row['postdate']);
+                    // Ensure $row['data'] is a string before decoding
+                    $rowData = is_string($row['data']) ? $row['data'] : '';
+                    if (empty($rowData)) { // Skip if data is not a valid string or empty
+                        // Optionally log this issue
+                        // error_log("Empty or invalid comment data for pasteid: $pasteid, comment dataid: {$row['dataid']}");
+                        continue;
+                    }
+                    $data = Json::decode($rowData);
+                    if (array_key_exists('v', $data) && $data['v'] >= 2) {
+                        $version      = 2;
+                        $comments[$i] = $data;
+                    } else {
+                        $version      = 1;
+                        $comments[$i] = array('data' => $rowData);
+                    }
+                    list($createdKey, $iconKey) = $this->_getVersionedKeys($version);
+                    $comments[$i]['id']         = $row['dataid'];
+                    $comments[$i]['parentid']   = $row['parentid'];
+                    $comments[$i]['meta']       = array($createdKey => (int) $row['postdate']);
+                    foreach (array('nickname' => 'nickname', 'vizhash' => $iconKey) as $rowKey => $commentKey) {
+                        if (array_key_exists($rowKey, $row) && !empty($row[$rowKey])) {
+                            $comments[$i]['meta'][$commentKey] = $row[$rowKey];
+                        }
                     }
                 }
+                ksort($comments);
             }
-            ksort($comments);
+            return $comments;
+        } catch (PDOException $e) {
+            // Log error
+            // error_log("PDOException in readComments for pasteid $pasteid: " . $e->getMessage());
+            return []; // Return empty array on DB error
+        } catch (Exception $e) { // Catch Json::decode errors or others
+            // Log error
+            // error_log("Exception in readComments for pasteid $pasteid: " . $e->getMessage());
+            return []; // Return empty array on other errors
         }
-        return $comments;
     }
 
     /**
@@ -516,14 +540,20 @@ class Database extends AbstractData
             try {
                 $value = Json::encode($this->_last_cache);
             } catch (Exception $e) {
+                // error_log("Error encoding traffic_limiter cache for $key: " . $e->getMessage());
                 return false;
             }
         }
-        return $this->_exec(
-            'UPDATE "' . $this->_sanitizeIdentifier('config') .
-            '" SET "value" = ? WHERE "id" = ?',
-            array($value, strtoupper($namespace))
-        );
+        try {
+            return $this->_exec(
+                'UPDATE "' . $this->_sanitizeIdentifier('config') .
+                '" SET "value" = ? WHERE "id" = ?',
+                array($value, strtoupper($namespace))
+            );
+        } catch (PDOException $e) {
+            // error_log("Error setting value for $namespace: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -539,12 +569,19 @@ class Database extends AbstractData
         $configKey = strtoupper($namespace);
         $value     = $this->_getConfig($configKey);
         if ($value === '') {
-            // initialize the row, so that setValue can rely on UPDATE queries
-            $this->_exec(
-                'INSERT INTO "' . $this->_sanitizeIdentifier('config') .
-                '" VALUES(?,?)',
-                array($configKey, '')
-            );
+            try {
+                // initialize the row, so that setValue can rely on UPDATE queries
+                $this->_exec(
+                    'INSERT INTO "' . $this->_sanitizeIdentifier('config') .
+                    '" VALUES(?,?)',
+                    array($configKey, '')
+                );
+            } catch (PDOException $e) {
+                // error_log("Error initializing config key $configKey: " . $e->getMessage());
+                // If insert fails, we might not want to proceed with salt migration,
+                // or salt migration might also fail. The original code would continue.
+                // For now, let's allow it to continue to attempt salt migration as per original flow.
+            }
 
             // migrate filesystem based salt into database
             $file = 'data' . DIRECTORY_SEPARATOR . 'salt.php';
