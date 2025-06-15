@@ -4,16 +4,31 @@ $isCpct = substr($template, 9, 8) === '-compact';
 $isDark = substr($template, 9, 5) === '-dark';
 $isPage = substr($template, -5) === '-page';
 ?><!DOCTYPE html>
-<html lang="<?php echo I18n::getLanguage(); ?>"<?php echo I18n::isRtl() ? ' dir="rtl"' : ''; ?><?php if ($isDark) echo ' data-bs-theme="dark"'; ?>>
+<html lang="<?php echo I18n::getLanguage(); ?>"<?php echo I18n::isRtl() ? ' dir="rtl"' : ''; ?>>
 	<head>
 		<meta charset="utf-8" />
 		<meta http-equiv="Content-Security-Policy" content="<?php echo I18n::encode($CSPHEADER); ?>">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="robots" content="noindex" />
 		<meta name="google" content="notranslate">
 		<title><?php echo I18n::_($NAME); ?></title>
-		<link type="text/css" rel="stylesheet" href="css/bootstrap5/bootstrap-5.3.3.css" />
-		<link type="text/css" rel="stylesheet" href="css/bootstrap5/privatebin.css?<?php echo rawurlencode($VERSION); ?>" />
+<?php
+if (!$isDark) :
+?>
+		<link type="text/css" rel="stylesheet" href="css/bootstrap/bootstrap-3.4.1.css" />
+<?php
+endif;
+?>
+		<link type="text/css" rel="stylesheet" href="css/bootstrap/bootstrap-theme-3.4.1.css" />
+<?php
+if ($isDark) :
+?>
+		<link type="text/css" rel="stylesheet" href="css/bootstrap/darkstrap-0.9.3.css" />
+<?php
+endif;
+?>
+		<link type="text/css" rel="stylesheet" href="css/bootstrap/privatebin.css?<?php echo rawurlencode($VERSION); ?>" />
 <?php
 if ($SYNTAXHIGHLIGHTING) :
 ?>
@@ -27,6 +42,7 @@ if ($SYNTAXHIGHLIGHTING) :
 endif;
 ?>
 		<noscript><link type="text/css" rel="stylesheet" href="css/noscript.css" /></noscript>
+		<?php $this->_scriptTag('js/jquery-3.7.1.js', 'defer'); ?>
 <?php
 if ($QRCODE) :
 ?>
@@ -42,6 +58,7 @@ endif;
 		<?php $this->_scriptTag('js/zlib-1.3.1.js', 'async'); ?>
 		<?php $this->_scriptTag('js/base-x-4.0.0.js', 'defer'); ?>
 		<?php $this->_scriptTag('js/rawinflate-0.3.js', 'defer'); ?>
+		<?php $this->_scriptTag('js/bootstrap-3.4.1.js', 'defer'); ?>
 <?php
 if ($SYNTAXHIGHLIGHTING) :
 ?>
@@ -50,11 +67,12 @@ if ($SYNTAXHIGHLIGHTING) :
 endif;
 if ($MARKDOWN) :
 ?>
-		<?php $this->_scriptTag('js/showdown.js', 'async'); ?>
+		<?php $this->_scriptTag('js/showdown-2.1.0.js', 'async'); ?>
 <?php
 endif;
 ?>
-		<?php $this->_scriptTag('js/purify.js', 'async'); ?>
+		<?php $this->_scriptTag('js/purify-3.2.5.js', 'async'); ?>
+		<?php $this->_scriptTag('js/legacy.js', 'async'); ?>
 		<?php $this->_scriptTag('js/privatebin.js', 'defer'); ?>
 		<!-- icon -->
 		<link rel="apple-touch-icon" href="<?php echo I18n::encode($BASEPATH); ?>img/apple-touch-icon.png" sizes="180x180" />
@@ -95,11 +113,11 @@ if (count($class)) {
 				<div class="modal-content">
 					<div class="modal-body">
 						<form id="passwordform" role="form">
-							<div class="mb-3">
-								<label for="passworddecrypt"><?php echo I18n::_('Please enter the password for this paste:') ?></label>
+							<div class="form-group">
+								<label for="passworddecrypt"><span class="glyphicon glyphicon-eye-open"></span> <?php echo I18n::_('Please enter the password for this paste:') ?></label>
 								<input id="passworddecrypt" type="password" class="form-control" placeholder="<?php echo I18n::_('Enter password') ?>" required="required">
 							</div>
-							<button type="submit" class="btn btn-success d-block w-100"><?php echo I18n::_('Decrypt') ?></button>
+							<button type="submit" class="btn btn-success btn-block"><span class="glyphicon glyphicon-off"></span> <?php echo I18n::_('Decrypt') ?></button>
 						</form>
 					</div>
 				</div>
@@ -109,11 +127,11 @@ if (count($class)) {
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-label="<?php echo I18n::_('Close') ?>"><span aria-hidden="true">&times;</span></button>
 						<h4 class="modal-title"><?php echo I18n::_('This secret message can only be displayed once. Would you like to see it now?') ?></h4>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo I18n::_('Close') ?>"></button>
 					</div>
 					<div class="modal-body text-center">
-						<button id="loadconfirm-open-now" type="button" class="btn btn-success" data-bs-dismiss="modal"><?php echo I18n::_('Yes, see it') ?></button>
+						<button id="loadconfirm-open-now" type="button" class="btn btn-success" data-dismiss="modal"><span class="glyphicon glyphicon-download"></span> <?php echo I18n::_('Yes, see it') ?></button>
 					</div>
 				</div>
 			</div>
@@ -125,8 +143,8 @@ if ($QRCODE) :
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-label="<?php echo I18n::_('Close') ?>"><span aria-hidden="true">&times;</span></button>
 						<h4 class="modal-title"><?php echo I18n::_('QR code') ?></h4>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo I18n::_('Close') ?>"></button>
 					</div>
 					<div class="modal-body">
 						<div class="mx-auto" id="qrcode-display"></div>
@@ -142,15 +160,15 @@ if ($EMAIL) :
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-label="<?php echo I18n::_('Close') ?>"><span aria-hidden="true">&times;</span></button>
 						<h4 class="modal-title"><?php echo I18n::_('Recipient may become aware of your timezone, convert time to UTC?') ?></h4>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo I18n::_('Close') ?>"></button>
 					</div>
 					<div class="modal-body row">
-						<div class="col-12 col-md-6 mb-2 mb-md-0">
-							<button id="emailconfirm-timezone-current" type="button" class="btn btn-danger d-block w-100"><?php echo I18n::_('Use Current Timezone') ?></button>
+						<div class="col-xs-12 col-md-6">
+							<button id="emailconfirm-timezone-current" type="button" class="btn btn-danger"><span class="glyphicon glyphicon-time"></span> <?php echo I18n::_('Use Current Timezone') ?></button>
 						</div>
-						<div class="col-12 col-md-6 text-md-end">
-							<button id="emailconfirm-timezone-utc" type="button" class="btn btn-success d-block w-100"><?php echo I18n::_('Convert To UTC') ?></button>
+						<div class="col-xs-12 col-md-6 text-right">
+							<button id="emailconfirm-timezone-utc" type="button" class="btn btn-success"><span class="glyphicon glyphicon-globe"></span> <?php echo I18n::_('Convert To UTC') ?></button>
 						</div>
 					</div>
 				</div>
@@ -159,75 +177,75 @@ if ($EMAIL) :
 <?php
 endif;
 ?>
-		<nav class="navbar navbar-expand-lg <?php echo $isDark ? 'navbar-dark bg-dark' : 'navbar-light bg-light'; ?> <?php echo $isCpct ? 'fixed-top' : 'sticky-top'; ?>">
-<div class="container-fluid">
-			<a class="reloadlink navbar-brand" href="">
-				<img alt="<?php echo I18n::_($NAME); ?>" src="img/icon.svg" width="38" />
-			</a>
-			<button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar" aria-expanded="false" aria-controls="navbar">
-				<span class="navbar-toggler-icon"></span>
-			</button>
-			<div id="navbar" class="collapse navbar-collapse">
-				<ul class="navbar-nav me-auto mb-2 mb-lg-0">
-					<li id="loadingindicator" class="nav-item visually-hidden">
-						<span class="navbar-text"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <?php echo I18n::_('Loading…'); ?></span>
+		<nav class="navbar navbar-<?php echo $isDark ? 'inverse' : 'default'; ?> navbar-<?php echo $isCpct ? 'fixed' : 'static'; ?>-top"><?php
+if ($isCpct) :
+?><div class="container"><?php
+endif;
+?>
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+					<span class="sr-only"><?php echo I18n::_('Toggle navigation'); ?></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				<a class="reloadlink navbar-brand" href="">
+					<img alt="<?php echo I18n::_($NAME); ?>" src="img/icon.svg" width="38" />
+				</a>
+			</div>
+			<div id="navbar" class="navbar-collapse collapse">
+				<ul class="nav navbar-nav">
+					<li id="loadingindicator" class="navbar-text hidden">
+						<span class="glyphicon glyphicon-time" aria-hidden="true"></span>
+						<?php echo I18n::_('Loading…'), PHP_EOL; ?>
 					</li>
-					<li class="nav-item">
-						<button id="retrybutton" type="button" class="reloadlink visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?> nav-link">
-							<?php echo I18n::_('Retry'); ?>
+					<li>
+						<button id="retrybutton" type="button" class="reloadlink hidden btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> <?php echo I18n::_('Retry'), PHP_EOL; ?>
 						</button>
 					</li>
-					<li class="nav-item">
+					<li>
 <?php
 if ($isPage) :
 ?>
-						<button id="sendbutton" type="button" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?> nav-link">
-							<?php echo I18n::_('Create');
+						<button id="sendbutton" type="button" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-upload" aria-hidden="true"></span> <?php echo I18n::_('Create'), PHP_EOL;
 else :
 ?>
-						<button id="newbutton" type="button" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?> nav-link">
-							<?php echo I18n::_('New');
+						<button id="newbutton" type="button" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-file" aria-hidden="true"></span> <?php echo I18n::_('New'), PHP_EOL;
 endif;
 ?>
 						</button>
-					</li>
-					<li class="nav-item">
-						<button id="clonebutton" type="button" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?> nav-link">
-							<?php echo I18n::_('Clone'); ?>
+						<button id="clonebutton" type="button" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-duplicate" aria-hidden="true"></span> <?php echo I18n::_('Clone'), PHP_EOL; ?>
 						</button>
-					</li>
-					<li class="nav-item">
-						<button id="rawtextbutton" type="button" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?> nav-link">
-							<?php echo I18n::_('Raw text'); ?>
+						<button id="rawtextbutton" type="button" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-text-background" aria-hidden="true"></span> <?php echo I18n::_('Raw text'), PHP_EOL; ?>
 						</button>
-					</li>
-					<li class="nav-item">
-						<button id="downloadtextbutton" type="button" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?> nav-link">
-							<?php echo I18n::_('Save paste'); ?>
+						<button id="downloadtextbutton" type="button" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon glyphicon-download-alt" aria-hidden="true"></span> <?php echo I18n::_('Save paste'), PHP_EOL; ?>
 						</button>
-					</li>
 <?php
 if ($EMAIL) :
 ?>
-					<li class="nav-item">
-						<button id="emaillink" type="button" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?> nav-link">
-							<?php echo I18n::_('Email'); ?>
+
+						<button id="emaillink" type="button" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-envelope" aria-hidden="true"></span> <?php echo I18n::_('Email'), PHP_EOL; ?>
 						</button>
-					</li>
 <?php
 endif;
 if ($QRCODE) :
 ?>
-					<li class="nav-item">
-						<button id="qrcodelink" type="button" data-bs-toggle="modal" data-bs-target="#qrcodemodal" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?> nav-link">
-							<?php echo I18n::_('QR code'); ?>
+						<button id="qrcodelink" type="button" data-toggle="modal" data-target="#qrcodemodal" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-qrcode" aria-hidden="true"></span> <?php echo I18n::_('QR code'), PHP_EOL; ?>
 						</button>
-					</li>
 <?php
 endif;
 ?>
-					<li class="nav-item dropdown">
-						<select id="pasteExpiration" name="pasteExpiration" class="form-select visually-hidden">
+					</li>
+					<li class="dropdown">
+						<select id="pasteExpiration" name="pasteExpiration" class="hidden">
 <?php
 foreach ($EXPIRE as $key => $value) :
 ?>
@@ -240,14 +258,14 @@ foreach ($EXPIRE as $key => $value) :
 endforeach;
 ?>
 						</select>
-						<a id="expiration" href="#" class="nav-link visually-hidden dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Expires'); ?>: <span id="pasteExpirationDisplay"><?php echo $EXPIRE[$EXPIREDEFAULT]; ?></span></a>
+						<a id="expiration" href="#" class="hidden dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Expires'); ?>: <span id="pasteExpirationDisplay"><?php echo $EXPIRE[$EXPIREDEFAULT]; ?></span> <span class="caret"></span></a>
 						<ul class="dropdown-menu">
 <?php
 foreach ($EXPIRE as $key => $value) :
 ?>
 							<li>
-								<a class="dropdown-item" href="#" data-expiration="<?php echo $key; ?>">
-									<?php echo $value; ?>
+								<a href="#" data-expiration="<?php echo $key; ?>">
+									<?php echo $value, PHP_EOL; ?>
 								</a>
 							</li>
 <?php
@@ -258,54 +276,54 @@ endforeach;
 <?php
 if ($isCpct) :
 ?>
-					<li class="nav-item dropdown">
-						<a id="formatter" href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Options'); ?></a>
+					<li class="dropdown">
+						<a id="formatter" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Options'); ?> <span class="caret"></span></a>
 						<ul class="dropdown-menu">
-							<li id="burnafterreadingoption" class="form-check visually-hidden ms-3">
-								<input class="form-check-input" type="checkbox" id="burnafterreading" name="burnafterreading"<?php
+							<li id="burnafterreadingoption" class="checkbox hidden">
+								<label>
+									<input type="checkbox" id="burnafterreading" name="burnafterreading"<?php
     if ($BURNAFTERREADINGSELECTED) :
 ?> checked="checked"<?php
     endif;
 ?> />
-								<label class="form-check-label" for="burnafterreading">
-									<?php echo I18n::_('Burn after reading'); ?>
+									<?php echo I18n::_('Burn after reading'), PHP_EOL; ?>
 								</label>
 							</li>
 <?php
     if ($DISCUSSION) :
 ?>
-							<li id="opendiscussionoption" class="form-check visually-hidden ms-3">
-								<input class="form-check-input" type="checkbox" id="opendiscussion" name="opendiscussion"<?php
+							<li id="opendiscussionoption" class="checkbox hidden">
+								<label>
+									<input type="checkbox" id="opendiscussion" name="opendiscussion"<?php
         if ($OPENDISCUSSION) :
 ?> checked="checked"<?php
         endif;
 ?> />
-								<label class="form-check-label" for="opendiscussion">
-									<?php echo I18n::_('Open discussion'); ?>
+									<?php echo I18n::_('Open discussion'), PHP_EOL; ?>
 								</label>
 							</li>
 <?php
     endif;
 ?>
-							<li><hr class="dropdown-divider"></li>
+							<li role="separator" class="divider"></li>
 							<li>
-								<span class="dropdown-item-text">
-									<?php echo I18n::_('Format'); ?>: <span id="pasteFormatterDisplay"><?php echo $FORMATTER[$FORMATTERDEFAULT]; ?></span>
-								</span>
+								<div>
+									<?php echo I18n::_('Format'); ?>: <span id="pasteFormatterDisplay"><?php echo $FORMATTER[$FORMATTERDEFAULT]; ?></span> <span class="caret"></span>
+								</div>
 							</li>
 <?php
     foreach ($FORMATTER as $key => $value) :
 ?>
 							<li>
-								<a class="dropdown-item" href="#" data-format="<?php echo $key; ?>">
-									<?php echo $value; ?>
+								<a href="#" data-format="<?php echo $key; ?>">
+									<?php echo $value, PHP_EOL; ?>
 								</a>
 							</li>
 <?php
     endforeach;
 ?>
 						</ul>
-						<select id="pasteFormatter" name="pasteFormatter" class="form-select visually-hidden">
+						<select id="pasteFormatter" name="pasteFormatter" class="hidden">
 <?php
     foreach ($FORMATTER as $key => $value) :
 ?>
@@ -322,30 +340,30 @@ if ($isCpct) :
 <?php
 else :
 ?>
-					<li class="nav-item">
-						<div id="burnafterreadingoption" class="form-check visually-hidden my-2 ms-2">
-							<input class="form-check-input" type="checkbox" id="burnafterreading" name="burnafterreading"<?php
+					<li>
+						<div id="burnafterreadingoption" class="navbar-text checkbox hidden">
+							<label>
+								<input type="checkbox" id="burnafterreading" name="burnafterreading"<?php
     if ($BURNAFTERREADINGSELECTED) :
 ?> checked="checked"<?php
     endif;
 ?> />
-							<label class="form-check-label" for="burnafterreading">
-								<?php echo I18n::_('Burn after reading'); ?>
+								<?php echo I18n::_('Burn after reading'), PHP_EOL; ?>
 							</label>
 						</div>
 					</li>
 <?php
     if ($DISCUSSION) :
 ?>
-					<li class="nav-item">
-						<div id="opendiscussionoption" class="form-check visually-hidden my-2 ms-2">
-							<input class="form-check-input" type="checkbox" id="opendiscussion" name="opendiscussion"<?php
+					<li>
+						<div id="opendiscussionoption" class="navbar-text checkbox hidden">
+							<label>
+								<input type="checkbox" id="opendiscussion" name="opendiscussion"<?php
         if ($OPENDISCUSSION) :
 ?> checked="checked"<?php
         endif;
 ?> />
-							<label class="form-check-label" for="opendiscussion">
-								<?php echo I18n::_('Open discussion'); ?>
+								<?php echo I18n::_('Open discussion'), PHP_EOL; ?>
 							</label>
 						</div>
 					</li>
@@ -354,8 +372,8 @@ else :
 endif;
 if ($PASSWORD) :
 ?>
-					<li class="nav-item">
-						<div id="password" class="visually-hidden my-1 ms-2">
+					<li>
+						<div id="password" class="navbar-form hidden">
 							<input type="password" id="passwordinput" placeholder="<?php echo I18n::_('Password (recommended)'); ?>" class="form-control" size="23" />
 						</div>
 					</li>
@@ -363,19 +381,19 @@ if ($PASSWORD) :
 endif;
 if ($FILEUPLOAD) :
 ?>
-					<li id="attach" class="nav-item visually-hidden dropdown ms-2">
-						<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Attach a file'); ?></a>
+					<li id="attach" class="hidden dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Attach a file'); ?> <span class="caret"></span></a>
 						<ul class="dropdown-menu">
-							<li id="filewrap" class="p-2">
+							<li id="filewrap">
 								<div>
-									<input class="form-control" type="file" id="file" name="file" multiple />
+									<input type="file" id="file" name="file" multiple />
 								</div>
-								<div id="dragAndDropFileName" class="form-text"><?php echo I18n::_('alternatively drag & drop a file or paste an image from the clipboard'); ?></div>
+								<div id="dragAndDropFileName" class="dragAndDropFile"><?php echo I18n::_('alternatively drag & drop a file or paste an image from the clipboard'); ?></div>
 							</li>
-							<li id="customattachment" class="visually-hidden"></li>
+							<li id="customattachment" class="hidden"></li>
 							<li>
-								<a id="fileremovebutton" class="dropdown-item" href="#">
-									<?php echo I18n::_('Remove attachment'); ?>
+								<a id="fileremovebutton"  href="#">
+									<?php echo I18n::_('Remove attachment'), PHP_EOL; ?>
 								</a>
 							</li>
 						</ul>
@@ -384,8 +402,8 @@ if ($FILEUPLOAD) :
 endif;
 if (!$isCpct) :
 ?>
-					<li class="nav-item dropdown ms-2">
-						<select id="pasteFormatter" name="pasteFormatter" class="form-select visually-hidden">
+					<li class="dropdown">
+						<select id="pasteFormatter" name="pasteFormatter" class="hidden">
 <?php
     foreach ($FORMATTER as $key => $value) :
 ?>
@@ -398,14 +416,14 @@ if (!$isCpct) :
     endforeach;
 ?>
 						</select>
-						<a id="formatter" href="#" class="nav-link visually-hidden dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Format'); ?>: <span id="pasteFormatterDisplay"><?php echo $FORMATTER[$FORMATTERDEFAULT]; ?></span></a>
+						<a id="formatter" href="#" class="hidden dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Format'); ?>: <span id="pasteFormatterDisplay"><?php echo $FORMATTER[$FORMATTERDEFAULT]; ?></span> <span class="caret"></span></a>
 						<ul class="dropdown-menu">
 <?php
     foreach ($FORMATTER as $key => $value) :
 ?>
 							<li>
-								<a class="dropdown-item" href="#" data-format="<?php echo $key; ?>">
-									<?php echo $value; ?>
+								<a href="#" data-format="<?php echo $key; ?>">
+									<?php echo $value, PHP_EOL; ?>
 								</a>
 							</li>
 <?php
@@ -417,18 +435,18 @@ if (!$isCpct) :
 endif;
 ?>
 				</ul>
-				<ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+				<ul class="nav navbar-nav pull-right">
 <?php
 if (!empty($LANGUAGESELECTION)) :
 ?>
-					<li id="language" class="nav-item dropdown">
-						<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo $LANGUAGES[$LANGUAGESELECTION][0]; ?></a>
-						<ul class="dropdown-menu dropdown-menu-end">
+					<li id="language" class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-flag" aria-hidden="true"></span> <?php echo $LANGUAGES[$LANGUAGESELECTION][0]; ?> <span class="caret"></span></a>
+						<ul class="dropdown-menu dropdown-menu-right">
 <?php
     foreach ($LANGUAGES as $key => $value) :
 ?>
 							<li>
-								<a class="dropdown-item" href="#" data-lang="<?php echo $key; ?>">
+								<a href="#" data-lang="<?php echo $key; ?>">
 									<?php echo $value[0]; ?> (<?php echo $value[1]; ?>)
 								</a>
 							</li>
@@ -443,14 +461,14 @@ endif;
 <?php
 if (!empty($TEMPLATESELECTION)) :
 ?>
-					<li id="template" class="nav-item dropdown">
-						<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Theme'); ?>: <?php echo $TEMPLATESELECTION; ?></a>
-						<ul class="dropdown-menu dropdown-menu-end">
+					<li id="template" class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><?php echo I18n::_('Theme'); ?>: <?php echo $TEMPLATESELECTION; ?> <span class="caret"></span></a>
+						<ul class="dropdown-menu dropdown-menu-right">
 <?php
     foreach ($TEMPLATES as $value) :
 ?>
 							<li>
-								<a class="dropdown-item" href="#" data-template="<?php echo $value; ?>">
+								<a href="#" data-template="<?php echo $value; ?>">
 									<?php echo $value; ?>
 								</a>
 							</li>
@@ -464,48 +482,57 @@ endif;
 ?>
 				</ul>
 			</div>
-</div>
-</nav>
-		<main class="container mt-3 mb-3">
-			<section>
+		<?php
+if ($isCpct) :
+?></div><?php
+endif;
+?></nav>
+		<main>
+			<section class="container">
 <?php
 if (!empty($NOTICE)) :
 ?>
 				<div role="alert" class="alert alert-info">
-					<?php echo I18n::encode($NOTICE); ?>
+					<span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+					<?php echo I18n::encode($NOTICE), PHP_EOL; ?>
 				</div>
 <?php
 endif;
 ?>
-				<div id="remainingtime" role="alert" class="visually-hidden alert alert-info">
+				<div id="remainingtime" role="alert" class="hidden alert alert-info">
+					<span class="glyphicon glyphicon-fire" aria-hidden="true"></span>
 				</div>
 <?php
 if ($FILEUPLOAD) :
 ?>
-				<div id="attachment" class="visually-hidden"></div>
+				<div id="attachment" class="hidden"></div>
 <?php
 endif;
 ?>
-				<div id="status" role="alert" class="alert alert-<?php echo (bool)$ISDELETED ? 'success' : 'info'; echo empty($STATUS) ? ' visually-hidden' : '' ?>">
-					<?php echo I18n::encode($STATUS); ?>
+				<div id="status" role="alert" class="clearfix alert alert-<?php echo (bool)$ISDELETED ? 'success' : 'info'; echo empty($STATUS) ? ' hidden' : '' ?>">
+					<span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+					<?php echo I18n::encode($STATUS), PHP_EOL; ?>
 					<?php
 						if ((bool)$ISDELETED):
 					?>
-						<button type="button" class="btn btn-secondary float-end" id="new-from-alert">
-							<?php echo I18n::_('Start over'); ?>
+						<button type="button" class="btn btn-default pull-right" id="new-from-alert">
+							<span class="glyphicon glyphicon-repeat"></span> <?php echo I18n::_('Start over'), PHP_EOL; ?>
 						</button>
 					<?php endif; ?>
 				</div>
-				<div id="errormessage" role="alert" class="<?php echo empty($ERROR) ? 'visually-hidden' : '' ?> alert alert-danger">
-					<?php echo I18n::encode($ERROR); ?>
+				<div id="errormessage" role="alert" class="<?php echo empty($ERROR) ? 'hidden' : '' ?> alert alert-danger">
+					<span class="glyphicon glyphicon-alert" aria-hidden="true"></span>
+					<?php echo I18n::encode($ERROR), PHP_EOL; ?>
 				</div>
 				<noscript>
-					<div id="noscript" role="alert" class="alert alert-<?php echo $isDark ? 'danger' : 'warning'; ?>">
-						<?php echo I18n::_('JavaScript is required for %s to work. Sorry for the inconvenience.', I18n::_($NAME)); ?>
+					<div id="noscript" role="alert" class="alert alert-<?php echo $isDark ? 'error' : 'warning'; ?>">
+						<span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+						<?php echo I18n::_('JavaScript is required for %s to work. Sorry for the inconvenience.', I18n::_($NAME)), PHP_EOL; ?>
 					</div>
 				</noscript>
-				<div id="oldnotice" role="alert" class="visually-hidden alert alert-danger">
-					<?php echo I18n::_('%s requires a modern browser to work.', I18n::_($NAME)); ?>
+				<div id="oldnotice" role="alert" class="hidden alert alert-danger">
+					<span class="glyphicon glyphicon-alert" aria-hidden="true"></span>
+					<?php echo I18n::_('%s requires a modern browser to work.', I18n::_($NAME)), PHP_EOL; ?>
 					<a href="https://www.mozilla.org/firefox/">Firefox</a>,
 					<a href="https://www.opera.com/">Opera</a>,
 					<a href="https://www.google.com/chrome">Chrome</a>…<br />
@@ -514,108 +541,107 @@ endif;
 <?php
 if ($HTTPWARNING) :
 ?>
-				<div id="httpnotice" role="alert" class="visually-hidden alert alert-danger">
+				<div id="httpnotice" role="alert" class="hidden alert alert-danger">
+					<span class="glyphicon glyphicon-alert" aria-hidden="true"></span>
 					<?php echo I18n::_('This website is using an insecure connection! Please only use it for testing.'); ?><br />
 					<span class="small"><?php echo I18n::_('For more information <a href="%s">see this FAQ entry</a>.', 'https://github.com/PrivateBin/PrivateBin/wiki/FAQ#why-does-it-show-me-an-error-about-an-insecure-connection'); ?></span>
 				</div>
-				<div id="insecurecontextnotice" role="alert" class="visually-hidden alert alert-danger">
-					<?php echo I18n::_('Your browser may require an HTTPS connection to support the WebCrypto API. Try <a href="%s">switching to HTTPS</a>.', $HTTPSLINK); ?>
+				<div id="insecurecontextnotice" role="alert" class="hidden alert alert-danger">
+					<span class="glyphicon glyphicon-alert" aria-hidden="true"></span>
+					<?php echo I18n::_('Your browser may require an HTTPS connection to support the WebCrypto API. Try <a href="%s">switching to HTTPS</a>.', $HTTPSLINK), PHP_EOL; ?>
 				</div>
 <?php
 endif;
 ?>
-				<div id="pastesuccess" class="visually-hidden">
-					<div class="btn-toolbar mb-3" role="toolbar">
-						<div class="btn-group me-2 mb-2 mb-md-0" role="group">
-							<button id="copyLink" type="button" class="btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?>">
-								<?php echo I18n::_('Copy link') ?>
-							</button>
-						</div>
-						<div class="btn-group mb-2 mb-md-0" role="group">
-							<a href="#" id="deletelink" class="btn btn-<?php echo $isDark ? 'warning' : 'danger'; ?>">
-								<?php echo I18n::_('Delete now') ?> <!-- Icon placeholder for delete -->
-							</a>
-						</div>
+				<div id="pastesuccess" class="hidden">
+					<div class="nav nav-justified">
+						<button id="copyLink" type="button" class="btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-duplicate" aria-hidden="true"></span> <?php echo I18n::_('Copy link') ?>
+						</button>
+						<a href="#" id="deletelink" class="btn btn-<?php echo $isDark ? 'warning' : 'default'; ?> navbar-btn">
+							<span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+							<span></span>
+						</a>
 					</div>
 					<div role="alert" class="alert alert-success">
+						<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
 						<div id="pastelink"></div>
 					</div>
 <?php
 if (!empty($URLSHORTENER)) :
 ?>
-					<p class="mt-3">
-						<button id="shortenbutton" data-shortener="<?php echo I18n::encode($URLSHORTENER); ?>" type="button" class="btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?> d-block w-100">
-							<?php echo I18n::_('Shorten URL'); ?>
+					<p>
+						<button id="shortenbutton" data-shortener="<?php echo I18n::encode($URLSHORTENER); ?>" type="button" class="btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?> btn-block">
+							<span class="glyphicon glyphicon-send" aria-hidden="true"></span> <?php echo I18n::_('Shorten URL'), PHP_EOL; ?>
 						</button>
 					</p>
-					<div role="alert" class="alert alert-danger mt-3">
-						<?php echo I18n::_('URL shortener may expose your decrypt key in URL.'); ?>
+					<div role="alert" class="alert alert-danger">
+						<span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+						<?php echo I18n::_('URL shortener may expose your decrypt key in URL.'), PHP_EOL; ?>
 					</div>
 <?php
 endif;
 ?>
 				</div>
-				<ul id="editorTabs" class="nav nav-tabs visually-hidden" role="tablist">
-					<li class="nav-item" role="presentation"><button class="nav-link active" id="messageedit-tab" data-bs-toggle="tab" data-bs-target="#messageedit-pane" type="button" role="tab" aria-controls="messageedit-pane" aria-selected="true"><?php echo I18n::_('Editor'); ?></button></li>
-					<li class="nav-item" role="presentation"><button class="nav-link" id="messagepreview-tab" data-bs-toggle="tab" data-bs-target="#messagepreview-pane" type="button" role="tab" aria-controls="messagepreview-pane" aria-selected="false"><?php echo I18n::_('Preview'); ?></button></li>
-					<li class="nav-item ms-auto">
+				<ul id="editorTabs" class="nav nav-tabs hidden">
+					<li role="presentation" class="active"><a role="tab" aria-selected="true" aria-controls="editorTabs" id="messageedit" href="#"><?php echo I18n::_('Editor'); ?></a></li>
+					<li role="presentation"><a role="tab" aria-selected="false" aria-controls="editorTabs" id="messagepreview" href="#"><?php echo I18n::_('Preview'); ?></a></li>
+					<li role="presentation" class="pull-right">
 <?php
 if ($isPage) :
 ?>
-						<button id="newbutton" type="button" class="reloadlink visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'secondary'; ?>">
-							<?php echo I18n::_('New');
+						<button id="newbutton" type="button" class="reloadlink hidden btn btn-<?php echo $isDark ? 'warning' : 'default'; ?>">
+							<span class="glyphicon glyphicon-file" aria-hidden="true"></span> <?php echo I18n::_('New'), PHP_EOL;
 else :
 ?>
-						<button id="sendbutton" type="button" tabindex="2" class="visually-hidden btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?>">
-							<?php echo I18n::_('Create');
+						<button id="sendbutton" type="button" tabindex="2" class="hidden btn btn-<?php echo $isDark ? 'warning' : 'primary'; ?>">
+							<span class="glyphicon glyphicon-upload" aria-hidden="true"></span> <?php echo I18n::_('Create'), PHP_EOL;
 endif;
 ?>
 						</button>
 					</li>
 				</ul>
-				<div class="tab-content mt-3">
-					<div class="tab-pane fade show active" id="messageedit-pane" role="tabpanel" aria-labelledby="messageedit-tab" tabindex="0">
-						<div id="placeholder" class="col-md-12 visually-hidden"><?php echo I18n::_('+++ no paste text +++'); ?></div>
-						<div id="attachmentPreview" class="col-md-12 text-center visually-hidden"></div>
-						<h5 id="copyShortcutHint" class="col-md-12"><small id="copyShortcutHintText"></small></h5>
-						<div id="prettymessage" class="col-md-12 visually-hidden position-relative">
-							<button id="prettyMessageCopyBtn" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-1 z-1">
-								<span id="copyIcon"></span> <!-- Icon placeholder for copy -->
-								<span id="copySuccessIcon" class="text-success visually-hidden"></span> <!-- Icon placeholder for success -->
-							</button>
-							<pre id="prettyprint" class="col-md-12 prettyprint linenums:1"></pre>
-						</div>
-						<div id="plaintext" class="col-md-12 visually-hidden"></div>
-						<div class="col-md-12 mb-3"><textarea id="message" name="message" cols="80" rows="25" tabindex="1" class="form-control visually-hidden"></textarea></div>
-						<div class="col-md-12 form-check">
-							<input class="form-check-input" id="messagetab" type="checkbox" tabindex="3" checked="checked" />
-							<label class="form-check-label" for="messagetab">
-								<?php echo I18n::_('Tabulator key serves as character (Hit <kbd>Ctrl</kbd>+<kbd>m</kbd> or <kbd>Esc</kbd> to toggle)'); ?>
-							</label>
-						</div>
-					</div>
-					<div class="tab-pane fade" id="messagepreview-pane" role="tabpanel" aria-labelledby="messagepreview-tab" tabindex="0">
-						<!-- Preview content will be injected here by JS -->
-					</div>
-				</div>
 			</section>
-			<section class="container mt-3">
-				<div id="discussion" class="visually-hidden">
+			<section class="container">
+				<article class="row">
+					<div id="placeholder" class="col-md-12 hidden"><?php echo I18n::_('+++ no paste text +++'); ?></div>
+					<div id="attachmentPreview" class="col-md-12 text-center hidden"></div>
+					<h5 id="copyShortcutHint" class="col-md-12"><small id="copyShortcutHintText"></small></h5>
+					<div id="prettymessage" class="col-md-12 hidden">
+						<button id="prettyMessageCopyBtn">
+							<span id="copyIcon" class="glyphicon glyphicon-duplicate" aria-hidden="true"></span>
+							<span id="copySuccessIcon" class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
+						</button>
+						<pre id="prettyprint" class="col-md-12 prettyprint linenums:1"></pre>
+					</div>
+					<div id="plaintext" class="col-md-12 hidden"></div>
+					<p class="col-md-12"><textarea id="message" name="message" cols="80" rows="25" tabindex="1" class="form-control hidden"></textarea></p>
+					<p class="col-md-12 checkbox">
+						<label>
+							<input id="messagetab" type="checkbox" tabindex="3" checked="checked" />
+							<?php echo I18n::_('Tabulator key serves as character (Hit <kbd>Ctrl</kbd>+<kbd>m</kbd> or <kbd>Esc</kbd> to toggle)'), PHP_EOL; ?>
+						</label>
+					</p>
+				</article>
+			</section>
+			<section class="container">
+				<div id="discussion" class="hidden">
 					<h4><?php echo I18n::_('Discussion'); ?></h4>
 					<div id="commentcontainer"></div>
 				</div>
 			</section>
-			<section class="container mt-3">
+			<section class="container">
 				<div id="noscript" role="alert" class="alert alert-info noscript-hide">
+					<span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
 					<?php echo I18n::_('Loading…'); ?><br />
 					<span class="small"><?php echo I18n::_('In case this message never disappears please have a look at <a href="%s">this FAQ for information to troubleshoot</a>.', 'https://github.com/PrivateBin/PrivateBin/wiki/FAQ#why-does-the-loading-message-not-go-away'); ?></span>
 				</div>
 			</section>
-			<footer class="container mt-4 pt-4 border-top">
+			<footer class="container">
 				<div class="row">
-					<h4 class="col-lg-5 col-md-12 mb-3 mb-lg-0"><?php echo I18n::_($NAME); ?> <small class="text-muted">- <?php echo I18n::_('Because ignorance is bliss'); ?></small></h4>
-					<p class="col-lg-1 col-md-12 text-lg-center mb-3 mb-lg-0"><?php echo $VERSION; ?></p>
-					<p id="aboutbox" class="col-lg-6 col-md-12">
+					<h4 class="col-md-5 col-xs-8"><?php echo I18n::_($NAME); ?> <small>- <?php echo I18n::_('Because ignorance is bliss'); ?></small></h4>
+					<p class="col-md-1 col-xs-4 text-center"><?php echo $VERSION; ?></p>
+					<p id="aboutbox" class="col-md-6 col-xs-12">
 						<?php echo sprintf(
                             I18n::_('%s is a minimalist, open source online pastebin where the server has zero knowledge of pasted data. Data is encrypted/decrypted %sin the browser%s using 256 bits AES.',
                                 I18n::_($NAME),
@@ -635,34 +661,31 @@ endif;
 						<span class="commentdate">0000-00-00</span>
 					</div>
 					<div class="commentdata">c</div>
-					<button class="btn btn-outline-secondary btn-sm"><?php echo I18n::_('Reply'); ?></button>
+					<button class="btn btn-default btn-sm"><?php echo I18n::_('Reply'); ?></button>
 				</article>
 				<p id="commenttailtemplate" class="comment">
-					<button class="btn btn-outline-secondary btn-sm"><?php echo I18n::_('Add comment'); ?></button>
+					<button class="btn btn-default btn-sm"><?php echo I18n::_('Add comment'); ?></button>
 				</p>
-				<div id="replytemplate" class="reply visually-hidden mt-3">
-					<div class="mb-3">
-						<input type="text" id="nickname" class="form-control" title="<?php echo I18n::_('Optional nickname…'); ?>" placeholder="<?php echo I18n::_('Optional nickname…'); ?>" />
+				<div id="replytemplate" class="reply hidden">
+					<input type="text" id="nickname" class="form-control" title="<?php echo I18n::_('Optional nickname…'); ?>" placeholder="<?php echo I18n::_('Optional nickname…'); ?>" />
+					<textarea id="replymessage" class="replymessage form-control" cols="80" rows="7"></textarea><br />
+					<div id="replystatus" role="alert" class="statusmessage hidden alert">
+						<span class="glyphicon" aria-hidden="true"></span>
 					</div>
-					<div class="mb-3">
-						<textarea id="replymessage" class="replymessage form-control" cols="80" rows="7"></textarea>
-					</div>
-					<div id="replystatus" role="alert" class="statusmessage visually-hidden alert">
-					</div>
-					<button id="replybutton" class="btn btn-outline-secondary btn-sm"><?php echo I18n::_('Post comment'); ?></button>
+					<button id="replybutton" class="btn btn-default btn-sm"><?php echo I18n::_('Post comment'); ?></button>
 				</div>
-				<div id="attachmenttemplate" role="alert" class="attachment visually-hidden alert alert-info mt-3">
-					<a class="alert-link" href="#"><?php echo I18n::_('Download attachment'); ?></a> <!-- Icon placeholder -->
+				<div id="attachmenttemplate" role="alert" class="attachment hidden alert alert-info">
+					<span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span>
+					<a class="alert-link"><?php echo I18n::_('Download attachment'); ?></a>
 				</div>
 			</div>
 		</div>
 <?php
 if ($FILEUPLOAD) :
 ?>
-		<div id="dropzone" class="visually-hidden" tabindex="-1" aria-hidden="true"></div>
+		<div id="dropzone" class="hidden" tabindex="-1" aria-hidden="true"></div>
 <?php
 endif;
 ?>
-		<?php $this->_scriptTag('js/bootstrap-5.3.3.js', 'defer'); ?>
 	</body>
 </html>
