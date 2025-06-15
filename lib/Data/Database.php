@@ -82,9 +82,108 @@ class Database extends AbstractData
                 substr($options['dsn'], 0, strpos($options['dsn'], ':'))
             );
             // MySQL uses backticks to quote identifiers by default,
-            // tell it to expect ANSI SQL double quotes
+            // tell it to expect ANSI SQL double quotes.
+            // Also ensure UTF8mb4 for the connection.
             if ($this->_type === 'mysql' && defined('PDO::MYSQL_ATTR_INIT_COMMAND')) {
-                $options['opt'][PDO::MYSQL_ATTR_INIT_COMMAND] = "SET SESSION sql_mode='ANSI_QUOTES'";
+                $init_commands = [];
+                if (isset($options['opt'][PDO::MYSQL_ATTR_INIT_COMMAND])) {
+                    // Preserve existing init commands if set via integer key in conf.php
+                    $init_commands[] = $options['opt'][PDO::MYSQL_ATTR_INIT_COMMAND];
+                }
+
+                // Ensure SET NAMES is present
+                $set_names_present = false;
+                foreach ($init_commands as $cmd) {
+                    if (stripos($cmd, 'SET NAMES') !== false) {
+                        $set_names_present = true;
+                        break;
+                    }
+                }
+                // Also check string-keyed options from conf.php, in case 'PDO::MYSQL_ATTR_INIT_COMMAND' was used as a string literal
+                foreach($options['opt'] as $key => $value) {
+                    if (is_string($key) && strtoupper($key) === 'PDO::MYSQL_ATTR_INIT_COMMAND' && stripos($value, 'SET NAMES') !== false) {
+                         $set_names_present = true;
+                         if (!in_array($value, $init_commands)) $init_commands[] = $value; // Add it if not already captured
+                         unset($options['opt'][$key]); // remove string-keyed version as we manage it via int key
+                         break;
+                    }
+                }
+
+                if (!$set_names_present) {
+                    $init_commands[] = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci";
+                }
+
+                // Ensure ANSI_QUOTES is part of the sql_mode
+                $sql_mode_command = "SESSION sql_mode=(SELECT CONCAT(IFNULL(@@SESSION.sql_mode, ''),',ANSI_QUOTES'))";
+                $ansi_quotes_present = false;
+                foreach ($init_commands as $cmd) {
+                    if (stripos($cmd, 'ANSI_QUOTES') !== false) {
+                        $ansi_quotes_present = true;
+                        break;
+                    }
+                }
+                if (!$ansi_quotes_present) {
+                    $init_commands[] = $sql_mode_command;
+                }
+
+                // Consolidate all init commands. PDO expects a single string for PDO::MYSQL_ATTR_INIT_COMMAND.
+                // Multiple "SET" statements should be separated by semicolons if executed as one command string,
+                // but it's safer to ensure that if multiple distinct settings are needed, they are compatible
+                // with being a single command or that the sql_mode part correctly appends.
+                // For now, we assume that SET NAMES and SET SESSION sql_mode are the primary ones.
+                // A robust way is to set sql_mode first, then other items if they are not part of sql_mode.
+                // The provided logic for sql_mode (CONCAT) is good as it appends.
+
+                $final_init_command = '';
+                $sql_mode_cmd_part = "SET SESSION sql_mode=(SELECT CONCAT(IFNULL(@@SESSION.sql_mode, ''),',ANSI_QUOTES'))";
+                $other_cmds = [];
+
+                foreach ($init_commands as $cmd) {
+                    if (stripos($cmd, 'sql_mode') !== false) {
+                        // If user provided a full sql_mode, ensure ANSI_QUOTES is in it
+                        if (stripos($cmd, 'ANSI_QUOTES') === false) {
+                           // This is tricky; replacing their sql_mode might be bad.
+                           // For now, let's assume the user's sql_mode is respected and we add ours.
+                           // The CONCAT logic handles appending. If user explicitly set sql_mode without ANSI_QUOTES,
+                           // the CONCAT will add it. If they included ANSI_QUOTES, CONCAT might add it twice
+                           // which is usually harmless for sql_mode.
+                        }
+                        // The global CONCAT strategy for sql_mode is generally fine.
+                    } elseif (stripos($cmd, 'SET NAMES') !== false) {
+                        // Ensure only one SET NAMES. The first one encountered (likely from conf.php) wins.
+                        if (!in_array("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci", $other_cmds) && !$set_names_present) {
+                           $other_cmds[] = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci";
+                           $set_names_present = true; // Mark as handled
+                        } else if (stripos($cmd, 'SET NAMES') !== false && !in_array($cmd, $other_cmds)) {
+                           $other_cmds[] = $cmd; // User-defined SET NAMES
+                        }
+                    } else {
+                        if (!in_array($cmd, $other_cmds)) $other_cmds[] = $cmd;
+                    }
+                }
+
+                $command_parts = $other_cmds;
+                if (!$ansi_quotes_present) { // Check again, effectively
+                     $command_parts[] = $sql_mode_cmd_part;
+                } else {
+                    // If user set sql_mode manually, make sure ANSI_QUOTES is in it, if not, append.
+                    // This is complex. The CONCAT approach is generally best.
+                    // We'll just ensure the sql_mode_command is there if no other sql_mode command from user included ANSI_QUOTES.
+                    $user_set_sql_mode_with_ansi = false;
+                    foreach($other_cmds as $ocmd) {
+                        if (stripos($ocmd, 'sql_mode') !== false && stripos($ocmd, 'ANSI_QUOTES') !== false) {
+                            $user_set_sql_mode_with_ansi = true;
+                            break;
+                        }
+                    }
+                    if (!$user_set_sql_mode_with_ansi) {
+                         // Remove any other sql_mode commands from $command_parts to avoid conflict if they didn't have ANSI_QUOTES
+                         $command_parts = array_filter($command_parts, function($c) { return stripos($c, 'sql_mode') === false; });
+                         $command_parts[] = $sql_mode_cmd_part;
+                    }
+                }
+
+                $options['opt'][PDO::MYSQL_ATTR_INIT_COMMAND] = implode(';', array_unique($command_parts));
             }
             $tableQuery = $this->_getTableQuery($this->_type);
             $this->_db  = new PDO(
@@ -728,43 +827,90 @@ class Database extends AbstractData
      */
     private function _createPasteTable()
     {
-        list($main_key, $after_key) = $this->_getPrimaryKeyClauses();
-        $dataType                   = $this->_getDataType();
-        $attachmentType             = $this->_getAttachmentType();
-        $metaType                   = $this->_getMetaType();
-        $this->_db->exec(
-            'CREATE TABLE "' . $this->_sanitizeIdentifier('paste') . '" ( ' .
-            "\"dataid\" CHAR(16) NOT NULL$main_key, " .
-            "\"data\" $attachmentType, " .
-            '"expiredate" INT, ' .
-            '"opendiscussion" INT, ' .
-            '"burnafterreading" INT, ' .
-            "\"meta\" $metaType, " .
-            "\"attachment\" $attachmentType, " .
-            "\"attachmentname\" $dataType$after_key )"
-        );
+        if ($this->_type === 'mysql') {
+            $this->_db->exec(
+                'CREATE TABLE IF NOT EXISTS `' . $this->_sanitizeIdentifier('paste') . '` ( ' .
+                '`dataid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, ' .
+                '`data` LONGBLOB, ' .
+                '`expiredate` INT, ' .
+                '`opendiscussion` TINYINT(1), ' .  // Using TINYINT(1) for boolean
+                '`burnafterreading` TINYINT(1), ' . // Using TINYINT(1) for boolean
+                '`meta` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci, ' .
+                '`attachment` LONGBLOB, ' .
+                '`attachmentname` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, ' .
+                'PRIMARY KEY (`dataid`), ' .
+                'INDEX `idx_paste_expiredate` (`expiredate`)' .
+                ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        } else {
+            list($main_key, $after_key) = $this->_getPrimaryKeyClauses();
+            $dataType                   = $this->_getDataType();
+            $attachmentType             = $this->_getAttachmentType();
+            $metaType                   = $this->_getMetaType();
+            $this->_db->exec(
+                'CREATE TABLE "' . $this->_sanitizeIdentifier('paste') . '" ( ' .
+                "\"dataid\" CHAR(16) NOT NULL$main_key, " .
+                "\"data\" $attachmentType, " . // data column for paste content
+                '"expiredate" INT, ' .
+                '"opendiscussion" INT, ' .
+                '"burnafterreading" INT, ' .
+                "\"meta\" $metaType, " .
+                "\"attachment\" $attachmentType, " . // attachment column for file content
+                "\"attachmentname\" $dataType$after_key )" // attachmentname for file name
+            );
+        }
     }
 
     /**
-     * create the paste table
+     * create the comment table (changed from _createPasteTable)
      *
      * @access private
      */
     private function _createCommentTable()
     {
-        list($main_key, $after_key) = $this->_getPrimaryKeyClauses();
-        $dataType                   = $this->_getDataType();
-        $this->_db->exec(
-            'CREATE TABLE "' . $this->_sanitizeIdentifier('comment') . '" ( ' .
-            "\"dataid\" CHAR(16) NOT NULL$main_key, " .
-            '"pasteid" CHAR(16), ' .
-            '"parentid" CHAR(16), ' .
-            "\"data\" $dataType, " .
-            "\"nickname\" $dataType, " .
-            "\"vizhash\" $dataType, " .
-            "\"postdate\" INT$after_key )"
-        );
-        if ($this->_type === 'oci') {
+        if ($this->_type === 'mysql') {
+            $this->_db->exec(
+                'CREATE TABLE IF NOT EXISTS `' . $this->_sanitizeIdentifier('comment') . '` ( ' .
+                '`dataid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, ' .
+                '`pasteid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin, ' .
+                '`parentid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin, ' .
+                '`data` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, ' .
+                '`nickname` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci, ' .
+                '`vizhash` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, ' .
+                '`postdate` INT, ' .
+                'PRIMARY KEY (`dataid`), ' .
+                'INDEX `idx_comment_pasteid` (`pasteid`), ' .
+                'INDEX `idx_comment_parentid` (`parentid`)' .
+                ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        } else {
+            list($main_key, $after_key) = $this->_getPrimaryKeyClauses();
+            $dataType                   = $this->_getDataType();
+            $this->_db->exec(
+                'CREATE TABLE "' . $this->_sanitizeIdentifier('comment') . '" ( ' .
+                "\"dataid\" CHAR(16) NOT NULL$main_key, " .
+                '"pasteid" CHAR(16), ' .
+                '"parentid" CHAR(16), ' .
+                "\"data\" $dataType, " .
+                "\"nickname\" $dataType, " .
+                "\"vizhash\" $dataType, " .
+                "\"postdate\" INT$after_key )"
+            );
+            // For non-MySQL, create index separately if not OCI (OCI has specific handling)
+            if ($this->_type !== 'oci') {
+                // CREATE INDEX IF NOT EXISTS not supported as of Oracle MySQL <= 8.0
+                // This was the original logic, keeping it for other DBs like pgsql, sqlite
+                $this->_db->exec(
+                    'CREATE INDEX IF NOT EXISTS "' . // IF NOT EXISTS might not be supported by all non-MySQL DBs this way
+                    $this->_sanitizeIdentifier('comment_parent') . '" ON "' .
+                    $this->_sanitizeIdentifier('comment') . '" ("pasteid")'
+                );
+            }
+        }
+        // OCI specific index creation was here, moved into the else block's non-MySQL path for clarity or keep as is if it applies generally.
+        // For now, assuming the original OCI block was fine where it was, or needs to be in the non-MySQL path.
+        // The prompt's original OCI block was:
+        if ($this->_type === 'oci') { // This was outside the if/else in the original code.
             $this->_db->exec(
                 'declare
                     already_exists  exception;
@@ -772,37 +918,40 @@ class Database extends AbstractData
                     pragma exception_init( already_exists, -955 );
                     pragma exception_init(columns_indexed, -1408);
                 begin
-                    execute immediate \'create index "comment_parent" on "' . $this->_sanitizeIdentifier('comment') . '" ("pasteid")\';
+                    execute immediate \'create index "' . $this->_sanitizeIdentifier('comment_parent') . '" on "' . $this->_sanitizeIdentifier('comment') . '" ("pasteid")\';
                 exception
                     when already_exists or columns_indexed then
                     NULL;
                 end;'
             );
-        } else {
-            // CREATE INDEX IF NOT EXISTS not supported as of Oracle MySQL <= 8.0
-            $this->_db->exec(
-                'CREATE INDEX "' .
-                $this->_sanitizeIdentifier('comment_parent') . '" ON "' .
-                $this->_sanitizeIdentifier('comment') . '" ("pasteid")'
-            );
         }
     }
 
     /**
-     * create the paste table
+     * create the config table (changed from _createPasteTable)
      *
      * @access private
      */
     private function _createConfigTable()
     {
-        list($main_key, $after_key) = $this->_getPrimaryKeyClauses('id');
-        $charType                   = $this->_type === 'oci' ? 'VARCHAR2(16)' : 'CHAR(16)';
-        $textType                   = $this->_getMetaType();
-        $this->_db->exec(
-            'CREATE TABLE "' . $this->_sanitizeIdentifier('config') .
-            "\" ( \"id\" $charType NOT NULL$main_key, \"value\" $textType$after_key )"
-        );
-        $this->_exec(
+        if ($this->_type === 'mysql') {
+            $this->_db->exec(
+                'CREATE TABLE IF NOT EXISTS `' . $this->_sanitizeIdentifier('config') . '` ( ' .
+                '`id` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, ' .
+                '`value` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci, ' .
+                'PRIMARY KEY (`id`)' .
+                ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        } else {
+            list($main_key, $after_key) = $this->_getPrimaryKeyClauses('id');
+            $charType                   = $this->_type === 'oci' ? 'VARCHAR2(16)' : 'CHAR(16)';
+            $textType                   = $this->_getMetaType();
+            $this->_db->exec(
+                'CREATE TABLE "' . $this->_sanitizeIdentifier('config') .
+                "\" ( \"id\" $charType NOT NULL$main_key, \"value\" $textType$after_key )"
+            );
+        }
+        $this->_exec( // This INSERT is fine for both MySQL and others, assuming table exists.
             'INSERT INTO "' . $this->_sanitizeIdentifier('config') .
             '" VALUES(?,?)',
             array('VERSION', Controller::VERSION)

@@ -220,11 +220,13 @@ dir = PATH "data"
 ; example of DB configuration for MySQL
 ;class = Database
 ;[model_options]
-;dsn = "mysql:host=localhost;dbname=privatebin;charset=UTF8"
-;tbl = "privatebin_"	; table prefix
-;usr = "privatebin"
-;pwd = "Z3r0P4ss"
-;opt[12] = true	  ; PDO::ATTR_PERSISTENT
+;dsn = "mysql:host=localhost;port=3306;dbname=privatebin;charset=utf8mb4"
+;tbl = "pb_"	; table prefix, default is pb_ if not set and not migrating from ZeroBin
+;usr = "privatebin_user"
+;pwd = "your_password_here"
+;opt[1002] = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci" ; PDO::MYSQL_ATTR_INIT_COMMAND, ensures UTF8MB4 connection
+;opt[12] = true	  ; PDO::ATTR_PERSISTENT, enable persistent connections
+; For other PDO options see https://www.php.net/manual/en/pdo.setattribute.php
 
 ;[model]
 ; example of DB configuration for SQLite

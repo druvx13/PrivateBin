@@ -32,45 +32,48 @@ docker run --rm --read-only -v ~/PrivateBin:/srv:ro privatebin/unit-testing moch
 
 In order to run these tests, you will need to install the following packages
 and their dependencies:
-* phpunit
-* php-gd
-* php-sqlite3
-* php-xdebug (for code coverage reports)
+* A PHP 8.2+ environment.
+* `composer` to install PHP dependencies.
+* PHP extensions: `php-gd` (for image functions used in some tests/features), `php-sqlite3` (for database tests using SQLite), `php-xdebug` (for code coverage reports).
 
-Example for Debian and Ubuntu:
-
+Example for Debian and Ubuntu (ensure you have PHP 8.2+ from appropriate repositories):
 ```console
-$ sudo apt install phpunit php-gd php-sqlite3 php-xdebug
+$ sudo apt install php8.2-cli php8.2-gd php8.2-sqlite3 php8.2-xdebug composer
 ```
 
-Because the unit tests depend on this, you also need to install the optional. Otherwise they won't run:
+Install PHPUnit and other development dependencies using Composer from the root of the PrivateBin checkout:
 ```console
-composer require google/cloud-storage
+$ composer install
 ```
+This will install PHPUnit 10 or 11, as per `composer.json`.
 
-If you do this and want to develop further, please go into `.gitignore` and adjust it to ignore the whole
-vendor directory. Otherwise your `git status` will be filled with lot's of unrelated PHP files.
+Because some unit tests cover optional storage backends, you might need to install their SDKs if you intend to run those specific tests or if they are part of the default suite:
+```console
+composer require --dev google/cloud-storage aws/aws-sdk-php
+```
+(Note: `--dev` ensures these are not installed in production if you separate dev/prod dependencies).
 
-To run the tests, change into the `tst` directory and run phpunit:
-
+To run the tests, change into the `tst` directory and run phpunit (which should be available via `./vendor/bin/phpunit` if not globally installed):
 ```console
 $ cd PrivateBin/tst
-$ phpunit
+$ ../vendor/bin/phpunit
+```
+Or, from the project root:
+```console
+$ ./vendor/bin/phpunit -c tst/phpunit.xml
 ```
 
 Additionally there is the `ConfigurationTestGenerator`. Based on the
 configurations defined in its constructor, it generates the unit test file
-`tst/ConfigurationCombinationsTest.php`, containing all possible combinations
-of these configurations and tests for (most of the) valid combinations. Some of
-combinations can't be tested with this method, i.e. a valid option combined with
-an invalid one. Other very specific test cases (i.e. to trigger multiple errors)
-are covered in `tst/ControllerTest.php`. Here is how to generate the
-configuration test and run it:
-
+`tst/ConfigurationCombinationsTest.php`. Due to changes in default SRI hashes
+and JavaScript library configurations in `lib/Configuration.php`, the output of
+this generator will change. If `ConfigurationCombinationsTest.php` is committed
+to the repository, it will need to be regenerated and updated.
+Here is how to generate the configuration test and run it:
 ```console
 $ cd PrivateBin/tst
 $ ../bin/configuration-test-generator
-$ phpunit ConfigurationCombinationsTest.php
+$ ../vendor/bin/phpunit ConfigurationCombinationsTest.php
 ```
 
 ## Running JavaScript Unit Tests

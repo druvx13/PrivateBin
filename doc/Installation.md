@@ -21,13 +21,14 @@ for more information.
 
 ### Minimal Requirements
 
-- PHP version 7.3 or above
+- PHP version 8.2 or above
 - GD extension (when using identicon or vizhash icons, jdenticon works without it)
 - zlib extension
-- some disk space or a database supported by [PDO](https://php.net/manual/book.pdo.php)
-- ability to create files and folders in the installation directory and the PATH
-  defined in index.php
-- A web browser with JavaScript and (optional) WebAssembly support
+- Composer for installing PHP dependencies.
+- JavaScript dependencies are bundled with releases. For development or custom builds, Node.js/npm may be required.
+- Some disk space or a database supported by [PDO](https://php.net/manual/book.pdo.php) (MySQL 5.7.8+/MariaDB 10.2.2+, PostgreSQL 9.4+, SQLite 3.7.11+ recommended).
+- Ability to create files and folders in the installation directory and the PATH defined in `index.php` (if using filesystem storage).
+- A modern web browser with JavaScript and WebAssembly support (for zlib compression/decompression).
 
 ## Hardening and Security
 
@@ -108,6 +109,13 @@ to your PrivateBin installation.
 More details can be found in the
 [configuration documentation](https://github.com/PrivateBin/PrivateBin/wiki/Configuration).
 
+Subresource Integrity (SRI) hashes for JavaScript files are managed in
+`lib/Configuration.php` by default. If you customize `cfg/conf.php`, you can
+override these. If you manually update any JavaScript files or use a CDN, you
+will need to update these hashes. The set of JavaScript files has been updated;
+jQuery and legacy browser support scripts have been removed, and some libraries
+(DOMPurify, Showdown) have new filenames (e.g., `purify.js`, `showdown.js`).
+
 ## Advanced installation
 
 ### Web server configuration
@@ -141,71 +149,88 @@ data folder. This is the recommended setup for most sites on single hosts.
 
 Under high load, in distributed setups or if you are not allowed to store files
 locally, you might want to switch to the `Database` model. This lets you
-store your data in a database. Basically all databases that are supported by
+store your data in a database. Most databases supported by
 [PDO](https://secure.php.net/manual/en/book.pdo.php) may be used. Automatic table
-creation is provided for `pdo_ibm`, `pdo_informix`, `pdo_mssql`, `pdo_mysql`,
-`pdo_oci`, `pdo_pgsql` and `pdo_sqlite`. You may want to provide a table prefix,
-if you have to share the PrivateBin database with another application or you want
-to use a prefix for
-[security reasons](https://security.stackexchange.com/questions/119510/is-using-a-db-prefix-for-tables-more-secure).
-The table prefix option is called `tbl`.
+creation is provided for `pdo_mysql` (MySQL 5.7.8+/MariaDB 10.2.2+), `pdo_pgsql`
+(PostgreSQL 9.4+), `pdo_sqlite` (SQLite 3.7.11+), and older versions may support
+`pdo_ibm`, `pdo_informix`, `pdo_mssql`, `pdo_oci`. You may want to provide a table
+prefix if you have to share the PrivateBin database with another application.
+The table prefix option is called `tbl` in `[model_options]`.
 
 > #### Note
-> The `Database` model has only been tested with SQLite, MariaDB/MySQL and
-> PostgreSQL, although it would not be recommended to use SQLite in a production
-> environment. If you gain any experience running PrivateBin on other RDBMS,
-> please let us know.
+> The `Database` model is well-tested with recent versions of MariaDB/MySQL,
+> PostgreSQL, and SQLite. Using SQLite in a high-traffic production environment
+> is generally not recommended. If you gain experience running PrivateBin on other
+> RDBMS, please let us know.
 
-The following GRANTs (privileges) are required for the PrivateBin user in
-**MariaDB/MySQL**. In normal operation:
-- INSERT, SELECT, DELETE on the paste and comment tables
-- SELECT on the config table
+**Configuring for MySQL/MariaDB:**
 
-If you want PrivateBin to handle table creation (when you create the first paste)
-and updates (after you update PrivateBin to a new release), you need to give the
-user these additional privileges:
-- CREATE, INDEX and ALTER on the database
-- INSERT and UPDATE on the config table
+To use MySQL or MariaDB, set the following in your `cfg/conf.php`:
 
-For reference or if you want to create the table schema for yourself to avoid
-having to give PrivateBin too many permissions (replace `prefix_` with your own
-table prefix and create the table schema with your favorite MariaDB/MySQL
-client):
+```ini
+[model]
+class = "Database"
 
+[model_options]
+dsn = "mysql:host=your_mysql_host;port=3306;dbname=your_mysql_dbname;charset=utf8mb4"
+usr = "your_mysql_user"
+pwd = "your_mysql_password"
+tbl = "pb_" ; This is the default prefix if not specified.
+; PDO options:
+; Set character set and collation, and ensure ANSI_QUOTES for SQL compatibility.
+; The Database class will attempt to add ANSI_QUOTES to the sql_mode if not already present.
+opt[1002] = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci" ; 1002 is PDO::MYSQL_ATTR_INIT_COMMAND
+opt[12] = true ; 12 is PDO::ATTR_PERSISTENT
+```
+
+The database user (`your_mysql_user`) requires the following privileges:
+- **Normal Operation**: `SELECT`, `INSERT`, `DELETE` on the PrivateBin tables (`pb_paste`, `pb_comment`, `pb_config`).
+- **Initial Setup/Upgrades**: `CREATE TABLE`, `ALTER TABLE`, `CREATE INDEX` on the database, and `UPDATE` on the `pb_config` table if you want PrivateBin to manage table creation and updates automatically.
+
+If PrivateBin creates the tables, it will use `utf8mb4` character set for full Unicode support.
+The required tables are `pb_paste`, `pb_comment`, and `pb_config` (assuming the default `pb_` prefix).
+
+**Example MySQL Table Schema (if creating manually):**
+(Replace `pb_` with your chosen prefix if different)
 ```sql
-CREATE TABLE prefix_paste (
-    dataid CHAR(16) NOT NULL,
-    data MEDIUMBLOB,
-    expiredate INT,
-    opendiscussion INT,
-    burnafterreading INT,
-    meta TEXT,
-    attachment MEDIUMBLOB,
-    attachmentname BLOB,
-    PRIMARY KEY (dataid)
-);
+CREATE TABLE `pb_paste` (
+    `dataid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `data` LONGBLOB,
+    `expiredate` INT,
+    `opendiscussion` TINYINT(1),
+    `burnafterreading` TINYINT(1),
+    `meta` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    `attachment` LONGBLOB,
+    `attachmentname` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+    PRIMARY KEY (`dataid`),
+    INDEX `idx_paste_expiredate` (`expiredate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE prefix_comment (
-    dataid CHAR(16),
-    pasteid CHAR(16),
-    parentid CHAR(16),
-    data BLOB,
-    nickname BLOB,
-    vizhash BLOB,
-    postdate INT,
-    PRIMARY KEY (dataid)
-);
-CREATE INDEX parent ON prefix_comment(pasteid);
+CREATE TABLE `pb_comment` (
+    `dataid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `pasteid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin,
+    `parentid` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin,
+    `data` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+    `nickname` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    `vizhash` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+    `postdate` INT,
+    PRIMARY KEY (`dataid`),
+    INDEX `idx_comment_pasteid` (`pasteid`),
+    INDEX `idx_comment_parentid` (`parentid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE prefix_config (
-    id CHAR(16) NOT NULL, value TEXT, PRIMARY KEY (id)
-);
-INSERT INTO prefix_config VALUES('VERSION', '1.7.6');
+CREATE TABLE `pb_config` (
+    `id` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `value` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- PrivateBin will attempt to insert its version into pb_config, e.g.:
+-- INSERT INTO `pb_config` (`id`, `value`) VALUES('VERSION', '1.8.0'); -- Adjust version as appropriate
 ```
 
 In **PostgreSQL**, the `data`, `attachment`, `nickname` and `vizhash` columns
-need to be `TEXT` and not `BLOB` or `MEDIUMBLOB`. The key names in brackets,
-after `PRIMARY KEY`, need to be removed.
+need to be `TEXT` and not `BLOB` or `MEDIUMBLOB`/`LONGBLOB`.
 
 In **Oracle**, the `data`, `attachment`, `nickname` and `vizhash` columns need
 to be `CLOB` and not `BLOB` or `MEDIUMBLOB`, the `id` column in the `config`

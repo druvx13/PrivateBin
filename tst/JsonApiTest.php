@@ -310,7 +310,7 @@ class JsonApiTest extends TestCase
         new Controller;
         $content = ob_get_contents();
         ob_end_clean();
-        $this->assertStringContainsString('id="pasteurl" href="https://example.com/1"', $content, "'{$baseUri}' outputs shortened URL correctly");
+        $this->assertStringContainsString('id="pasteurl" href="https://example.com/1"', $content, "'" . $baseUri . "' outputs shortened URL correctly");
     }
 
     public function baseUriProvider()

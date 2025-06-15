@@ -10,6 +10,11 @@
 
 @import url("../common.css");
 
+/* General body and loading cursor (loading is also in common.css) */
+body.loading {
+	cursor: wait;
+}
+
 .hidden {
 	display: none !important;
 }
@@ -35,6 +40,7 @@ pre {
 	background-color: RGBA(var(--bs-light-rgb), var(--bs-bg-opacity, 1));
 }
 
+/* Styles for code listings (prettify) */
 li.L0, li.L1, li.L2, li.L3, li.L4, li.L5, li.L6, li.L7, li.L8, li.L9 {
 	color: revert !important;
 	list-style-type: decimal !important;
@@ -45,16 +51,38 @@ li.L0, li.L1, li.L2, li.L3, li.L4, li.L5, li.L6, li.L7, li.L8, li.L9 {
 	background-color: var(--bs-gray-dark) !important;
 }
 
+/* Comment styling */
+.comment {
+	padding: 5px 0 5px 10px;
+}
+html[dir="rtl"] .comment {
+	padding: 5px 10px 5px 0;
+}
+
+/* Footer styling */
+footer h4 {
+	margin-top: 0;
+}
+
+/* Ensure buttons with .text-right class still float correctly if used, though text-end utility is preferred in HTML */
 .text-right button {
 	float: right;
+}
+html[dir="rtl"] .text-right button {
+	float: left;
 }
 
 html[dir="rtl"] #deletelink, html[dir="rtl"] #qrcodemodalClose {
 	float: left;
 }
 
+/* Pretty print copy button and hint */
 #prettyprint {
-	padding-right: 30px;
+	padding-right: 40px; /* Increased to avoid overlap with wider button area */
+}
+html[dir="rtl"] #prettyprint {
+	padding-left: 40px;
+	padding-right: 0;
 }
 
 #prettyMessageCopyBtn {
@@ -83,6 +111,10 @@ html[dir="rtl"] #prettyMessageCopyBtn {
 
 #copySuccessIcon {
 	display: none;
+}
+
+#copyShortcutHint {
+	margin-bottom: 5px;
 }
 
 #sendbutton svg {

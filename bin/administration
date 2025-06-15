@@ -247,12 +247,12 @@ EOT, PHP_EOL;
             $counters['total'] < 1000 ? 4 : 10
         );
 
-        echo "Total:\t\t\t{$counters['total']}", PHP_EOL;
+        echo "Total:\t\t\t" . $counters['total'], PHP_EOL;
         foreach ($ids as $pasteid) {
             try {
                 $paste = $this->_store->read($pasteid);
             } catch (Exception $e) {
-                echo "Error reading paste {$pasteid}: ", $e->getMessage(), PHP_EOL;
+                echo "Error reading paste " . $pasteid . ": ", $e->getMessage(), PHP_EOL;
                 ++$counters['damaged'];
             }
             ++$counters['progress'];
@@ -309,10 +309,10 @@ Source Code:\t\t{$counters['syntax']}
 Markdown:\t\t{$counters['md']}
 EOT, PHP_EOL;
         if ($counters['damaged'] > 0) {
-            echo "Damaged:\t\t{$counters['damaged']}", PHP_EOL;
+            echo "Damaged:\t\t" . $counters['damaged'], PHP_EOL;
         }
         if ($counters['unknown'] > 0) {
-            echo "Unknown format:\t\t{$counters['unknown']}", PHP_EOL;
+            echo "Unknown format:\t\t" . $counters['unknown'], PHP_EOL;
         }
     }
 
