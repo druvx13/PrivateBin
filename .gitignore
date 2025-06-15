@@ -1,7 +1,10 @@
 # Ignore server files for safety
 .htaccess
 .htpasswd
-cfg/*
+# cfg/* was removed to unignore cfg/conf.php
+# Note: cfg/conf.sample.php and cfg/.htaccess are explicitly unignored below,
+# but since cfg/* is removed, their ! rules are not strictly necessary for them to be tracked
+# if they were already tracked. However, keeping them doesn't hurt.
 !cfg/conf.sample.php
 !cfg/.htaccess
 
