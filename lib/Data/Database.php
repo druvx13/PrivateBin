@@ -536,22 +536,38 @@ class Database extends AbstractData
     public function setValue($value, $namespace, $key = '')
     {
         if ($namespace === 'traffic_limiter') {
-            $this->_last_cache[$key] = $value;
+            $this->_last_cache[$key] = $value; // $key here is the IP hash or similar
             try {
-                $value = Json::encode($this->_last_cache);
+                $value = Json::encode($this->_last_cache); // $value becomes JSON string of the whole cache
             } catch (Exception $e) {
                 // error_log("Error encoding traffic_limiter cache for $key: " . $e->getMessage());
                 return false;
             }
         }
+
+        $configKey = strtoupper($namespace);
+        $table = $this->_sanitizeIdentifier('config');
+
         try {
-            return $this->_exec(
-                'UPDATE "' . $this->_sanitizeIdentifier('config') .
-                '" SET "value" = ? WHERE "id" = ?',
-                array($value, strtoupper($namespace))
-            );
+            switch ($this->_type) {
+                case 'mysql':
+                    $sql = "INSERT INTO `{$table}` (`id`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)";
+                    break;
+                case 'sqlite':
+                    $sql = "REPLACE INTO \"{$table}\" (\"id\", \"value\") VALUES (?, ?)";
+                    break;
+                case 'pgsql':
+                    $sql = "INSERT INTO \"{$table}\" (\"id\", \"value\") VALUES (?, ?) ON CONFLICT (\"id\") DO UPDATE SET \"value\" = EXCLUDED.\"value\"";
+                    break;
+                default:
+                    // Generic fallback: delete then insert. Not atomic without transactions.
+                    $this->_exec("DELETE FROM \"{$table}\" WHERE \"id\" = ?", array($configKey));
+                    $sql = "INSERT INTO \"{$table}\" (\"id\", \"value\") VALUES (?, ?)";
+                    break;
+            }
+            return $this->_exec($sql, array($configKey, $value));
         } catch (PDOException $e) {
-            // error_log("Error setting value for $namespace: " . $e->getMessage());
+            // error_log("Error in setValue for $namespace with key $configKey: " . $e->getMessage());
             return false;
         }
     }
@@ -567,26 +583,61 @@ class Database extends AbstractData
     public function getValue($namespace, $key = '')
     {
         $configKey = strtoupper($namespace);
-        $value     = $this->_getConfig($configKey);
-        if ($value === '') {
-            try {
-                // initialize the row, so that setValue can rely on UPDATE queries
-                $this->_exec(
-                    'INSERT INTO "' . $this->_sanitizeIdentifier('config') .
-                    '" VALUES(?,?)',
-                    array($configKey, '')
-                );
-            } catch (PDOException $e) {
-                // error_log("Error initializing config key $configKey: " . $e->getMessage());
-                // If insert fails, we might not want to proceed with salt migration,
-                // or salt migration might also fail. The original code would continue.
-                // For now, let's allow it to continue to attempt salt migration as per original flow.
-            }
+        $value     = $this->_getConfig($configKey); // Returns '' if not found, or actual value, or '' on PDO error
 
-            // migrate filesystem based salt into database
-            $file = 'data' . DIRECTORY_SEPARATOR . 'salt.php';
-            if ($namespace === 'salt' && is_readable($file)) {
-                $fs    = new Filesystem(array('dir' => 'data'));
+        // Salt migration logic
+        // This part is crucial: if salt is not found in DB (value is empty), try to migrate.
+        // If migration happens, it calls setValue which will now correctly UPSERT.
+        // If no file salt, ServerSalt::get() will generate a new one and call setValue.
+        if ($namespace === 'salt' && empty($value)) { // empty means not found, or DB error, or actually empty
+            $file = PATH . 'data' . DIRECTORY_SEPARATOR . 'salt.php'; // Ensure PATH is defined and correct
+            if (@is_readable($file)) { // Use @ to suppress errors if path is invalid before PHP handles it
+                $fsSalt = '';
+                $fsFileContents = @file_get_contents($file);
+                if ($fsFileContents !== false) {
+                    $saltParts = explode('|', $fsFileContents);
+                    if (count($saltParts) === 3) {
+                        $fsSalt = $saltParts[1];
+                    }
+                }
+
+                if (!empty($fsSalt)) {
+                    // error_log("Attempting to migrate salt from filesystem to database for key: $configKey");
+                    if ($this->setValue($fsSalt, $namespace)) { // $namespace is 'salt' here
+                        @unlink($file);
+                        // error_log("Salt successfully migrated to database for key: $configKey");
+                        return $fsSalt; // Return the migrated salt
+                    } else {
+                        // error_log("Failed to migrate salt to database for key: $configKey. getValue will return current DB value (empty).");
+                        // Fall through, ServerSalt::get() will handle generating a new one if this path fails to return a salt.
+                    }
+                }
+            }
+            // If we are here, either no file salt, or migration failed.
+            // Return current $value (which is empty) so ServerSalt::get() can generate a new one.
+        }
+
+        // Traffic limiter cache handling
+        // Only try to decode if $value is not empty. An empty $value for traffic_limiter means no data yet.
+        if ($value !== '' && $namespace === 'traffic_limiter') {
+            try {
+                $this->_last_cache = Json::decode($value);
+            } catch (Exception $e) {
+                $this->_last_cache = array(); // Reset cache on decode error
+                // error_log("Error decoding traffic_limiter cache: " . $e->getMessage() . ". Cache reset.");
+                return ''; // Return empty as if no specific key data found or cache corrupt
+            }
+            if (array_key_exists($key, $this->_last_cache)) {
+                return (string) $this->_last_cache[$key];
+            }
+            return ''; // Key not in traffic_limiter cache for this IP
+        }
+        return (string) $value;
+    }
+
+    /**
+     * Returns up to batch size number of paste ids that have expired
+                $fs    = new Filesystem(array('dir' => PATH . 'data')); // Ensure correct path for Filesystem
                 $value = $fs->getValue('salt');
                 $this->setValue($value, 'salt');
                 @unlink($file);
@@ -974,21 +1025,26 @@ class Database extends AbstractData
         if ($this->_type === 'mysql') {
             $this->_db->exec(
                 'CREATE TABLE IF NOT EXISTS `' . $this->_sanitizeIdentifier('config') . '` ( ' .
-                '`id` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, ' .
-                '`value` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci, ' .
+                '`id` VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, ' . // Changed from VARCHAR(16)
+                '`value` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL, ' . // Added DEFAULT NULL
                 'PRIMARY KEY (`id`)' .
                 ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
             );
         } else {
             list($main_key, $after_key) = $this->_getPrimaryKeyClauses('id');
-            $charType                   = $this->_type === 'oci' ? 'VARCHAR2(16)' : 'CHAR(16)';
-            $textType                   = $this->_getMetaType();
+            // Ensuring VARCHAR(32) for consistency, TEXT should generally allow NULLs or empty strings by default for generic types.
+            $charType                   = ($this->_type === 'oci' ? 'VARCHAR2(32)' : 'VARCHAR(32)');
+            $textType                   = $this->_getMetaType(); // Should be TEXT for most, which is fine.
             $this->_db->exec(
                 'CREATE TABLE "' . $this->_sanitizeIdentifier('config') .
                 "\" ( \"id\" $charType NOT NULL$main_key, \"value\" $textType$after_key )"
             );
         }
-        $this->_exec( // This INSERT is fine for both MySQL and others, assuming table exists.
+        // This INSERT is fine for both MySQL and others, assuming table exists.
+        // If it's a fresh setup, this INSERT populates the version.
+        // If it's an existing setup being upgraded, this might conflict if VERSION already exists.
+        // However, _createConfigTable is only called if the table itself doesn't exist.
+        $this->_exec(
             'INSERT INTO "' . $this->_sanitizeIdentifier('config') .
             '" VALUES(?,?)',
             array('VERSION', Controller::VERSION)
