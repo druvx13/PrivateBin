@@ -163,6 +163,8 @@ The table prefix option is called `tbl` in `[model_options]`.
 > is generally not recommended. If you gain experience running PrivateBin on other
 > RDBMS, please let us know.
 
+For detailed instructions on setting up a MySQL or MariaDB database, including manual table creation steps, please refer to the [MySQL Database Setup Guide](MySQL_DB_SETUP.md).
+
 **Configuring for MySQL/MariaDB:**
 
 To use MySQL or MariaDB, set the following in your `cfg/conf.php`:
